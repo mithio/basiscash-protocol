@@ -10,6 +10,7 @@ contract Epoch is Operator {
     uint256 private period;
     uint256 private startTime;
     uint256 private epoch;
+    uint256 private nextEpochTime;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -18,9 +19,11 @@ contract Epoch is Operator {
         uint256 _startTime,
         uint256 _startEpoch
     ) public {
+        require(_startTime > block.timestamp, 'Epoch: invalid start time');
         period = _period;
         startTime = _startTime;
         epoch = _startEpoch;
+        nextEpochTime = _startTime;
     }
 
     /* ========== Modifier ========== */
@@ -37,6 +40,7 @@ contract Epoch is Operator {
         _;
 
         epoch = epoch.add(1);
+	nextEpochTime = nextEpochTime.add(period);
     }
 
     /* ========== VIEW FUNCTIONS ========== */
@@ -54,7 +58,7 @@ contract Epoch is Operator {
     }
 
     function nextEpochPoint() public view returns (uint256) {
-        return startTime.add(epoch.mul(period));
+        return nextEpochTime;
     }
 
     /* ========== GOVERNANCE ========== */
