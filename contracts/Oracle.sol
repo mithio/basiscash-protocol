@@ -57,7 +57,7 @@ contract Oracle is Epoch {
     /* ========== MUTABLE FUNCTIONS ========== */
 
     /** @dev Updates 1-day EMA price from Uniswap.  */
-    function update() external checkEpoch {
+    function update() {
         (
             uint256 price0Cumulative,
             uint256 price1Cumulative,
