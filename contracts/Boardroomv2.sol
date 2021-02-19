@@ -54,7 +54,9 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
 
     struct Boardseat {
         uint256 lastSnapshotIndex;
-        uint256 rewardEarned;
+        uint256 startEpoch;
+        uint256 lastEpoch;
+        mapping(uint256 => uint256) rewardEarned;
     }
 
     struct BoardSnapshot {
@@ -101,18 +103,28 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
     modifier updateReward(address director) {
         if (director != address(0)) {
             Boardseat memory seat = directors[director];
-            seat.rewardEarned = earned(director);
+            uint256 currentEpoch = getCurrentEpoch();
+
+            seat.rewardEarned[currentEpoch] = seat.rewardEarned[currentEpoch].add(earnedNew(director));
+            seat.lastEpoch = currentEpoch;
             seat.lastSnapshotIndex = latestSnapshotIndex();
+            
             directors[director] = seat;
         }
         _;
     }
 
     /* ========== VIEW FUNCTIONS ========== */
+
+    function calculateClaimableRewardsForEpoch(address wallet, uint256 epoch) view public returns (uint256) {
+        uint256 epoch_delta = getCurrentEpoch() - epoch;
+        uint256 tax_percentage = (epoch_delta > 4) ? 0 : 10 * (5 - epoch_delta);
+        return directors[wallet].rewardEarned[epoch].mul(100 - tax_percentage).div(100);
+    }
     
     function calculateClaimableTaxesForEpoch(address wallet, uint256 epoch) view public returns (uint256) {
         uint256 epoch_delta = getCurrentEpoch() - epoch;
-        uint256 tax_percentage = (epoch_delta > 4) ? 0: 10*(5 - epoch_delta);
+        uint256 tax_percentage = (epoch_delta > 4) ? 0 : 10 * (5 - epoch_delta);
         return claimableTaxesBucket[wallet][epoch].mul(100 - tax_percentage).div(100);
     }
 
@@ -149,13 +161,13 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
     }
 
     function earned(address director) public view returns (uint256) {
-        uint256 latestRPS = getLatestSnapshot().rewardPerShare;
-        uint256 storedRPS = getLastSnapshotOf(director).rewardPerShare;
+        uint256 totalRewards = 0;
+        
+        for (uint i = directors[msg.sender].startEpoch; i <= directors[msg.sender].lastEpoch; i++) {
+            totalRewards = totalRewards.add(calculateClaimableRewardsForEpoch(msg.sender, i));
+        }
 
-        return
-            balanceOf(director).mul(latestRPS.sub(storedRPS)).div(1e18).add(
-                directors[director].rewardEarned
-            );
+        return totalRewards;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -168,6 +180,11 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
     {
         require(amount > 0, 'Boardroom: Cannot stake 0');
         super.stake(amount);
+
+        if (directors[msg.sender].startEpoch != 0) {
+            directors[msg.sender].startEpoch = getCurrentEpoch();
+        }
+
         emit Staked(msg.sender, amount);
     }
 
@@ -188,12 +205,45 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
         claimReward();
     }
 
-    function claimReward() public updateReward(msg.sender) {
-        uint256 reward = directors[msg.sender].rewardEarned;
-        if (reward > 0) {
-            directors[msg.sender].rewardEarned = 0;
-            cash.safeTransfer(msg.sender, reward);
-            emit RewardPaid(msg.sender, reward);
+    function claimReward(uint256 amount) public updateReward(msg.sender) {
+        uint256 totalEarned = earned(msg.sender);
+        require(amount <= totalEarned, 'Amount cannot be larger than total claimable rewards');
+
+        for (uint i = directors[msg.sender].startEpoch; amount > 0; i++) {
+            uint256 claimable = calculateClaimableRewardsForEpoch(msg.sender, i);
+
+            if (amount > claimable) {
+                directors[msg.sender].rewardEarned[i] = 0;
+                directors[msg.sender].startEpoch = i.add(1);
+                amount = amount.sub(claimable);
+            } else {
+                removeRewardsForEpoch(msg.sender, amount, i);
+                amount = 0;
+            }
+        }
+
+        // In this case, startEpoch will be calculated again for the next stake
+        if (amount == totalEarned) {
+            directors[msg.sender].startEpoch = 0;
+        }
+
+        cash.safeTransfer(msg.sender, amount);
+        emit RewardPaid(msg.sender, reward);
+    }
+
+    // Claim rewards for specific epoch
+    function claimRewardsForEpoch(uint256 amount, uint256 epoch) public updateReward(msg.sender) {
+        uint256 claimable = calculateClaimableRewardsForEpoch(msg.sender, epoch);
+
+        if (claimable > 0) {
+            require(
+                amount <= claimable,
+                'Amount cannot be larger than the claimable rewards for the epoch'
+            );
+
+            cash.safeTransfer(msg.sender, amount);
+
+            removeRewardsForEpoch(msg.sender, amount, epoch);
         }
     }
 
@@ -240,6 +290,31 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
         uint256 current_epoch = getCurrentEpoch();
         IERC20(cash).safeTransferFrom(msg.sender, address(this), amount);
         claimableTaxesBucket[msg.sender][current_epoch] = claimableTaxesBucket[msg.sender][current_epoch].add(amount);
+    }
+
+    function earnedNew(address director) private returns (uint256) {
+        uint256 latestRPS = getLatestSnapshot().rewardPerShare;
+        uint256 storedRPS = getLastSnapshotOf(director).rewardPerShare;
+
+        return
+            balanceOf(director).mul(latestRPS.sub(storedRPS)).div(1e18);
+    }
+
+    function removeRewardsForEpoch(address wallet, uint256 amount, uint256 epoch) private
+        onlyOneBlock
+        checkMigration
+    {
+        uint256 claimable = calculateClaimableRewardsForEpoch(wallet, epoch);
+
+        if (claimable > 0) {
+            require(
+                amount <= claimable,
+                'Amount cannot be larger than the claimable rewards for the epoch'
+            );
+
+            directors[wallet].rewardEarned[epoch] = 
+                directors[wallet].rewardEarned[epoch].sub(amount).mul(directors[wallet].rewardEarned[epoch]).div(claimable);
+        }
     }
 
     /* ========== EVENTS ========== */
