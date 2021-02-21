@@ -6,11 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import '../utils/ContractGuard.sol';
 // Inheritance
 import "./LpMigratorRecipient.sol";
+import "../interfaces/IStakingRewardsv2.sol";
 import '../interfaces/IOracle.sol';
 import '../utils/Epoch.sol';
 
 
-contract StakingRewardsv2 is LpMigratorRecipient, ContractGuard, Operator, Epoch {
+contract StakingRewardsv2 is IStakingRewardsv2, LpMigratorRecipient, ContractGuard, Operator, Epoch {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     
@@ -64,23 +65,23 @@ contract StakingRewardsv2 is LpMigratorRecipient, ContractGuard, Operator, Epoch
         }
     }
 
-    function totalRewardAmount() external view returns (uint256) {
+    function totalRewardAmount() external view override returns (uint256) {
         return _totalRewardAmount;
     }
 
-    function totalRewardBurned() external view returns (uint256) {
+    function totalRewardBurned() external view override returns (uint256) {
         return _totalRewardBurned;
     }
 
-    function totalSupply() external view returns (uint256) {
+    function totalSupply() external view override returns (uint256) {
         return _totalSupply;
     }
 
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(address account) external view override returns (uint256) {
         return _balances[account];
     }
 
-    function calculateRewardAmount(uint256 convertedAmount) public view returns (uint256) {
+    function calculateRewardAmount(uint256 convertedAmount) public view override returns (uint256) {
         uint256 price = getOraclePrice();
         // no reward if MICv1 price > 1
         if (price > ONE_DOLLAR_PRICE) {
@@ -101,7 +102,7 @@ contract StakingRewardsv2 is LpMigratorRecipient, ContractGuard, Operator, Epoch
         emit RewardBurn(user, amount);
     }
 
-    function getRedeemableReward(address user) public view returns (uint256){
+    function getRedeemableReward(address user) public view override returns (uint256){
         uint256 reward = rewards[user];
         if (getCurrentEpoch() >= TOTAL_EPOCH) {
             return reward;
@@ -110,7 +111,7 @@ contract StakingRewardsv2 is LpMigratorRecipient, ContractGuard, Operator, Epoch
         return reward.mul(multiplier).div(ONE_DOLLAR_PRICE);
     }
 
-    function getReward() public onlyOneBlock checkUnlock {
+    function getReward() public override onlyOneBlock checkUnlock {
         uint256 rewardPaid = rewardsPaid[msg.sender];
         uint256 redeemableReward = getRedeemableReward(msg.sender);
         if (rewardPaid < redeemableReward) {
@@ -129,7 +130,7 @@ contract StakingRewardsv2 is LpMigratorRecipient, ContractGuard, Operator, Epoch
         emit Withdrawn(user, amount);
     }
 
-    function exit() public checkUnlock {
+    function exit() public override checkUnlock {
         // reward will be burned when users exit.  get redeemable reward before exit.  
         getReward();
         uint256 unredeemedReward = rewards[msg.sender].sub(rewardsPaid[msg.sender]);
@@ -149,7 +150,7 @@ contract StakingRewardsv2 is LpMigratorRecipient, ContractGuard, Operator, Epoch
 
 
     // stakeLockedFor locked MICV2 LP Token and distribute reward according to converted MICv1 amount
-    function stakeLockedFor(address user, uint256 stakeAmount, uint256 convertedAmount) external onlyLpMigrator {
+    function stakeLockedFor(address user, uint256 stakeAmount, uint256 convertedAmount) external override onlyLpMigrator {
         require(getOraclePrice() < ONE_DOLLAR_PRICE, 'StakingRewards: Cannot stake while price > 1');
         require(stakeAmount > 0, 'StakingRewards: Cannot stake 0');
         require(!isStartRewards, 'StakingRewards: Cannot stake after start time');
