@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import '../utils/ContractGuard.sol';
 // Inheritance
-import "./LpMigratorRecipient.sol";
+import "../interfaces/ILpMigratorRecipient.sol";
 import "../interfaces/IStakingRewardsv2.sol";
 import '../interfaces/IOracle.sol';
 import '../utils/Epoch.sol';
 
 
-contract StakingRewardsv2 is IStakingRewardsv2, LpMigratorRecipient, ContractGuard, Operator, Epoch {
+contract StakingRewardsv2 is IStakingRewardsv2, ILpMigratorRecipient, ContractGuard, Operator, Epoch {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     
