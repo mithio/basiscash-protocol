@@ -228,7 +228,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
         }
 
         cash.safeTransfer(msg.sender, amount);
-        emit RewardPaid(msg.sender, reward);
+        emit RewardPaid(msg.sender, amount);
     }
 
     // Claim rewards for specific epoch
