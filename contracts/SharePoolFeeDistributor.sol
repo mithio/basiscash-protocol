@@ -31,7 +31,6 @@ contract SharePoolFeeDistributor is Whitelist, Operator {
     //Calculated the fee amount from the amount of earned rewards
     function calculateFeeAmount(uint256 amount) 
         external 
-        override
         view 
         returns (uint256 feeAmount)
     {
@@ -41,7 +40,6 @@ contract SharePoolFeeDistributor is Whitelist, Operator {
     // The updateReward function in the share pool contract calls this to let the fee contract know the fee amount
     function addFee(uint256 amount) 
         external 
-        override 
     {
         require(msg.sender == daiMicSharePoolAddress || msg.sender == daiMisSharePoolAddress);
         require(amount > 0, 'Fee should be larger than zero');
@@ -54,11 +52,11 @@ contract SharePoolFeeDistributor is Whitelist, Operator {
     function _safeTransfer(address _to, uint256 _amount) 
         internal 
     {
-        uint256 tokenBalance = token.balanceOf(address(this));
-        if (_amount > tokenBalance) {
-            token.transfer(_to, tokenBalance);
+        uint256 shareBalance = share.balanceOf(address(this));
+        if (_amount > shareBalance) {
+            share.transfer(_to, shareBalance);
         } else {
-            token.transfer(_to, _amount);
+            share.transfer(_to, _amount);
         }
     }
 
