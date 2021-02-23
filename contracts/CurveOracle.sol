@@ -15,7 +15,7 @@ import './interfaces/IUniswapV2Factory.sol';
 interface ICurve {
     function balances(uint256 i) external returns (uint256);
     function coins(uint256 i) external returns (address);
-    function get_dy(uint256 i, uint256 j, uint256 dx) external view returns (uint256);
+    function get_dy(int128 i, int128 j, uint256 dx) external view returns (uint256);
 }
 
 // fixed window oracle that recomputes the average price for the entire period once every period
