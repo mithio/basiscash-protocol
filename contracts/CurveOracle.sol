@@ -52,17 +52,23 @@ contract CurveOracle is Epoch {
         token1 = stableSwap.coins(1);
         token0Decimals = ERC20(token0).decimals();
         token1Decimals = ERC20(token1).decimals();
-        (price0Last, price1Last) = getTokensSpotPrice(); // fetch the current spotPrice;
-        uint256 reserve0;
-        uint256 reserve1;
-        reserve0 = stableSwap.balances(0);
-        reserve1 = stableSwap.balances(1);
-        require(reserve0 != 0 && reserve1 != 0, 'Oracle: NO_RESERVES'); // ensure that there's liquidity in the pair
+        // Since MICv2 needs to query an oracle to transfer, we need to set-up one before depositing tokens into
+        // Swap Pool.  Set default price = 1.
+
+        price0Last = 10**token0Decimals;
+        price1Last = 10**token1Decimals;
+
+        // (price0Last, price1Last) = getTokensSpotPrice(); // fetch the current spotPrice;
+        // uint256 reserve0;
+        // uint256 reserve1;
+        // reserve0 = stableSwap.balances(0);
+        // reserve1 = stableSwap.balances(1);
+        // require(reserve0 != 0 && reserve1 != 0, 'Oracle: NO_RESERVES'); // ensure that there's liquidity in the pair
     }
 
-    function getTokensSpotPrice() view public returns (uint256, uint256) {
-        uint256 price0 = stableSwap.get_dy(0, 1, 10 ** token0Decimals);
-        uint256 price1 = stableSwap.get_dy(1, 0, 10 ** token1Decimals);
+    function getTokensSpotPrice() public returns (uint256, uint256) {
+        uint256 price0 = stableSwap.get_dy(0, 1, 10**token0Decimals);
+        uint256 price1 = stableSwap.get_dy(1, 0, 10**token1Decimals);
         return (price0, price1);
     }
 
