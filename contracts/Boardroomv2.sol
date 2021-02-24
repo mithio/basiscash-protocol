@@ -113,11 +113,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
 
     /* ========== VIEW FUNCTIONS ========== */
 
-    function calculateClaimableRewardsForEpoch(address wallet, uint256 epoch) 
-        view 
-        public
-        returns (uint256) 
-    {
+    function calculateClaimableRewardsForEpoch(address wallet, uint256 epoch) view public returns (uint256) {
         return calculateClaimable(directors[wallet].rewardEarned[epoch], epoch);
     }
     
