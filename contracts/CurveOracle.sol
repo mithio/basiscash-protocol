@@ -54,16 +54,11 @@ contract CurveOracle is Epoch {
         token1Decimals = ERC20(token1).decimals();
         // Since MICv2 needs to query an oracle to transfer, we need to set-up one before depositing tokens into
         // Swap Pool.  Set default price = 1.
-
         price0Last = 10**token0Decimals;
         price1Last = 10**token1Decimals;
 
-        // (price0Last, price1Last) = getTokensSpotPrice(); // fetch the current spotPrice;
-        // uint256 reserve0;
-        // uint256 reserve1;
-        // reserve0 = stableSwap.balances(0);
-        // reserve1 = stableSwap.balances(1);
-        // require(reserve0 != 0 && reserve1 != 0, 'Oracle: NO_RESERVES'); // ensure that there's liquidity in the pair
+        price0Average =  FixedPoint.fraction(uint112(price0Last), uint112(price0Last));
+        price1Average = FixedPoint.fraction(uint112(price1Last), uint112(price1Last));
     }
 
     function getTokensSpotPrice() public returns (uint256, uint256) {
@@ -78,14 +73,8 @@ contract CurveOracle is Epoch {
     function update() external checkEpoch {
         (uint256 price0, uint256 price1) = getTokensSpotPrice();
 
-        // overflow is desired, casting never truncates
-        price0Average =  FixedPoint.uq112x112(
-            uint224((price0 + price0Last) / 2)
-        );
-        price1Average = FixedPoint.uq112x112(
-            uint224((price1 + price1Last) / 2)
-        );
-
+        price0Average =  FixedPoint.fraction(uint112(price0Last + price0), uint112(10**token0Decimals)).div(2);
+        price1Average = FixedPoint.fraction(uint112(price1Last + price1), uint112(10**token1Decimals)).div(2);
         price0Last = price0;
         price1Last = price1;
 
