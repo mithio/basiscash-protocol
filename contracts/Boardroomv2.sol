@@ -135,11 +135,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
     // staking before start time regards as staking at epoch 0.  
     function getCheckpointEpoch() view public returns(uint128) {
         uint256 currentEpoch = getCurrentEpoch();
-        if (currentEpoch == 0) {
-            return uint128(currentEpoch);
-        } else {
-            return uint128(currentEpoch) + 1;
-        }
+        return uint128(currentEpoch) + 1;
 
     }
 
@@ -225,8 +221,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
     }
 
     function claimReward(uint256 amount) 
-        public 
-        directorExists 
+        public
         updateReward(msg.sender) 
     {
         require(amount > 0, 'Amount cannot be zero');
@@ -260,7 +255,6 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
     // Claim rewards for specific epoch
     function claimRewardsForEpoch(uint256 amount, uint256 epoch) 
         public
-        directorExists
         updateReward(msg.sender)
     {
         require(amount > 0, 'Amount cannot be zero');
