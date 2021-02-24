@@ -223,7 +223,7 @@ contract ProRataRewardCheckpoint {
      * This is only applicable if there was no action (deposit/withdraw) in the current epoch.
      * Any deposit and withdraw will automatically initialize the current and next epoch.
      */
-    function manualEpochInit(uint128 epochId, uint128 currentEpoch) private {
+    function manualEpochInit(uint128 epochId, uint128 currentEpoch) internal {
         require(epochId <= currentEpoch, "can't init a future epoch");
 
         Pool storage p = poolSize[epochId];

@@ -323,6 +323,15 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
         IERC20(cash).safeTransfer(msg.sender, amount);
     }
 
+    /*
+     * manualEpochInit can be used by anyone to initialize an epoch based on the previous one
+     * This is only applicable if there was no action (deposit/withdraw) in the current epoch.
+     * Any deposit and withdraw will automatically initialize the current and next epoch.
+     */
+    function manualCheckpointEpochInit(uint128 checkpointEpochId) public {
+        manualEpochInit(checkpointEpochId, getCheckpointEpoch());
+    }
+
     function addClaimableTaxes(uint256 amount) public {
         uint256 current_epoch = getCurrentEpoch();
         IERC20(cash).safeTransferFrom(msg.sender, address(this), amount);
