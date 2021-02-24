@@ -150,6 +150,8 @@ contract CashLpMigrator is ContractGuard {
         //StakeLocked(_address, balance) stakes on behalf of _address
         //new staking contract should check the cash price before allowing people to stake locked
         //if that is the case, then I don't need to check the cash price in this contract
-        IStakingRewardsv2(stakingContract).stakeLockedFor(msg.sender, IERC20(lp_new).balanceOf(address(this)), convertedOldCashAmount);
+        uint256 stakeAmount = IERC20(lp_new).balanceOf(address(this));
+        IERC20(lp_new).approve(stakingContract, stakeAmount);
+        IStakingRewardsv2(stakingContract).stakeLockedFor(msg.sender, stakeAmount, convertedOldCashAmount);
     }
 }

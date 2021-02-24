@@ -160,7 +160,7 @@ contract StakingRewardsv2 is IStakingRewardsv2, ILpMigratorRecipient, ContractGu
         uint256 rewardAmount = calculateRewardAmount(convertedAmount);
         rewards[user] = rewards[user].add(rewardAmount);
         _totalRewardAmount = _totalRewardAmount.add(rewardAmount);
-        stakingToken.safeTransferFrom(user, address(this), stakeAmount);
+        stakingToken.safeTransferFrom(msg.sender, address(this), stakeAmount);
         emit Staked(user, stakeAmount);
         emit RewardAdded(rewardAmount);
     }
