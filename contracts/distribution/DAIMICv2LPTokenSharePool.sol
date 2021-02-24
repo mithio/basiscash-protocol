@@ -66,9 +66,12 @@ import '../interfaces/ISharePoolFeeDistributor.sol';
 
 import '../token/LPTokenWrapper.sol';
 
+import '../owner/Operator.sol';
+
 contract DAIMICv2LPTokenSharePool is
     LPTokenWrapper,
-    IRewardDistributionRecipient
+    IRewardDistributionRecipient,
+    Operator
 {
     IERC20 public mithShare;
     uint256 public constant DURATION = 30 days;
@@ -104,7 +107,7 @@ contract DAIMICv2LPTokenSharePool is
         lastUpdateTime = lastTimeRewardApplicable();
         if (account != address(0)) {
             uint256 earnedNew = earnedNew(account);
-            uint256 fee = ISharePoolFeeDistributor(feeDistributor).calculateFeeAmount();
+            uint256 fee = ISharePoolFeeDistributor(feeDistributor).calculateFeeAmount(earnedNew);
             ISharePoolFeeDistributor(feeDistributor).addFee(fee);
             rewards[account] = rewards[account].add(earnedNew).sub(fee);
             userRewardPerTokenPaid[account] = rewardPerTokenStored;

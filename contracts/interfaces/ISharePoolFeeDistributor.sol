@@ -11,7 +11,7 @@ interface ISharePoolFeeDistributor {
     // The updateReward function in the share pool contract calls this to let the fee contract know the fee amount
     function addFee(uint256 amount) external;
 
-    function setFeeTransferAddress(address _address) public;
+    function setFeeTransferAddress(address _address) external;
 
-    function setFeePercent(uint256 _percent) public;
+    function setFeePercent(uint256 _percent) external;
 }
