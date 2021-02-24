@@ -111,7 +111,11 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
 
     /* ========== VIEW FUNCTIONS ========== */
 
-    function calculateClaimableRewardsForEpoch(address wallet, uint256 epoch) view public returns (uint256) {
+    function calculateClaimableRewardsForEpoch(address wallet, uint256 epoch) 
+        view 
+        public
+        returns (uint256) 
+    {
         return calculateClaimable(directors[wallet].rewardEarned[epoch], epoch);
     }
     
@@ -327,7 +331,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
             );
 
             directors[wallet].rewardEarned[epoch] = 
-                directors[wallet].rewardEarned[epoch].sub(amount).mul(directors[wallet].rewardEarned[epoch]).div(claimable);
+                claimable.sub(amount).mul(directors[wallet].rewardEarned[epoch]).div(claimable);
         }
     }
 
