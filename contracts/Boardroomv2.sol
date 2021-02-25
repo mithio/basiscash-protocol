@@ -4,9 +4,7 @@ pragma solidity ^0.6.0;
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
-import './lib/Safe112.sol';
 import './utils/ContractGuard.sol';
-import './interfaces/IBasisAsset.sol';
 import './utils/Epoch.sol';
 
 contract ShareWrapper {
@@ -48,7 +46,6 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
-    using Safe112 for uint112;
 
     /* ========== DATA STRUCTURES ========== */
 
@@ -102,30 +99,39 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
 
     modifier updateReward(address director) {
         if (director != address(0)) {
-            Boardseat memory seat = directors[director];
+            Boardseat storage seat = directors[director];
             uint256 currentEpoch = getCurrentEpoch();
 
             seat.rewardEarned[currentEpoch] = seat.rewardEarned[currentEpoch].add(earnedNew(director));
             seat.lastEpoch = currentEpoch;
             seat.lastSnapshotIndex = latestSnapshotIndex();
-            
-            directors[director] = seat;
         }
         _;
     }
 
     /* ========== VIEW FUNCTIONS ========== */
 
-    function calculateClaimableRewardsForEpoch(address wallet, uint256 epoch) view public returns (uint256) {
-        uint256 epoch_delta = getCurrentEpoch() - epoch;
-        uint256 tax_percentage = (epoch_delta > 4) ? 0 : 10 * (5 - epoch_delta);
-        return directors[wallet].rewardEarned[epoch].mul(100 - tax_percentage).div(100);
+    function calculateClaimableRewardsForEpoch(address wallet, uint256 epoch) 
+        view 
+        public
+        returns (uint256) 
+    {
+        return calculateClaimable(directors[wallet].rewardEarned[epoch], epoch);
     }
     
     function calculateClaimableTaxesForEpoch(address wallet, uint256 epoch) view public returns (uint256) {
+        return calculateClaimable(claimableTaxesBucket[wallet][epoch], epoch);
+    }
+
+    function calculateClaimable(uint256 earned, uint256 epoch) view public returns (uint256) {
         uint256 epoch_delta = getCurrentEpoch() - epoch;
-        uint256 tax_percentage = (epoch_delta > 4) ? 0 : 10 * (5 - epoch_delta);
-        return claimableTaxesBucket[wallet][epoch].mul(100 - tax_percentage).div(100);
+
+        uint256 ten = 10;
+        uint256 five = 5;
+        uint256 tax_percentage = (epoch_delta > 4) ? 0 : ten.mul(five.sub(epoch_delta));
+
+        uint256 hundred = 100;
+        return earned.mul(hundred.sub(tax_percentage)).div(hundred);
     }
 
     // =========== Snapshot getters
@@ -163,8 +169,8 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
     function earned(address director) public view returns (uint256) {
         uint256 totalRewards = 0;
         
-        for (uint i = directors[msg.sender].startEpoch; i <= directors[msg.sender].lastEpoch; i++) {
-            totalRewards = totalRewards.add(calculateClaimableRewardsForEpoch(msg.sender, i));
+        for (uint i = directors[director].startEpoch; i <= directors[director].lastEpoch; i++) {
+            totalRewards = totalRewards.add(calculateClaimableRewardsForEpoch(director, i));
         }
 
         return totalRewards;
@@ -202,12 +208,21 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
 
     function exit() external {
         withdraw(balanceOf(msg.sender));
-        claimReward();
+        
+        claimReward(earned(msg.sender));
     }
 
-    function claimReward(uint256 amount) public updateReward(msg.sender) {
+    function claimReward(uint256 amount) 
+        public 
+        directorExists 
+        updateReward(msg.sender) 
+    {
+        require(amount > 0, 'Amount cannot be zero');
+
         uint256 totalEarned = earned(msg.sender);
         require(amount <= totalEarned, 'Amount cannot be larger than total claimable rewards');
+
+        cash.safeTransfer(msg.sender, amount);
 
         for (uint i = directors[msg.sender].startEpoch; amount > 0; i++) {
             uint256 claimable = calculateClaimableRewardsForEpoch(msg.sender, i);
@@ -227,12 +242,17 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
             directors[msg.sender].startEpoch = 0;
         }
 
-        cash.safeTransfer(msg.sender, amount);
         emit RewardPaid(msg.sender, amount);
     }
 
     // Claim rewards for specific epoch
-    function claimRewardsForEpoch(uint256 amount, uint256 epoch) public updateReward(msg.sender) {
+    function claimRewardsForEpoch(uint256 amount, uint256 epoch) 
+        public
+        directorExists
+        updateReward(msg.sender)
+    {
+        require(amount > 0, 'Amount cannot be zero');
+
         uint256 claimable = calculateClaimableRewardsForEpoch(msg.sender, epoch);
 
         if (claimable > 0) {
@@ -291,7 +311,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
         claimableTaxesBucket[msg.sender][current_epoch] = claimableTaxesBucket[msg.sender][current_epoch].add(amount);
     }
 
-    function earnedNew(address director) private returns (uint256) {
+    function earnedNew(address director) private view returns (uint256) {
         uint256 latestRPS = getLatestSnapshot().rewardPerShare;
         uint256 storedRPS = getLastSnapshotOf(director).rewardPerShare;
 
@@ -301,7 +321,6 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
 
     function removeRewardsForEpoch(address wallet, uint256 amount, uint256 epoch) private
         onlyOneBlock
-        checkMigration
     {
         uint256 claimable = calculateClaimableRewardsForEpoch(wallet, epoch);
 
@@ -312,7 +331,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch {
             );
 
             directors[wallet].rewardEarned[epoch] = 
-                directors[wallet].rewardEarned[epoch].sub(amount).mul(directors[wallet].rewardEarned[epoch]).div(claimable);
+                claimable.sub(amount).mul(directors[wallet].rewardEarned[epoch]).div(claimable);
         }
     }
 
