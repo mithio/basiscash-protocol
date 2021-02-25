@@ -10,7 +10,7 @@ contract FeeChecker is IFeeChecker, Operator {
 
     IOracle public oracle;
     address public tokenAddress;
-    uint256 tax_below_price = 1000000; //The value of $1 worth of Basis returned by the oracle ( 18 decimals, which is why we do oracle.consult(tokenAddress, 10 ** 18) )
+    uint256 tax_below_price = 1e18; //The value of $1 worth of Basis returned by the oracle ( 18 decimals, which is why we do oracle.consult(tokenAddress, 10 ** 18) )
 
     //If price < tax_below_price, sending Basis to addresses in feeList will have a fee
     mapping(address => bool) public feeList;
