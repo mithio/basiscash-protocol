@@ -82,10 +82,11 @@ contract CashLpMigrator is ContractGuard {
     }
 
     /* ========== MUTABLE FUNCTIONS ========== */
-
+    // _migrateCashLP migrates MICv1 LP tokens into MICv2 LP and returns the amount of converted MICv1.
     function _migrateCashLP()
         internal
         onlyOneBlock
+        returns (uint256)
     {
         require(block.timestamp <= endTime, 'CashLpMigrator: redemption period ended');
         uint256 amount = IERC20(lp_old).balanceOf(msg.sender);
@@ -123,6 +124,7 @@ contract CashLpMigrator is ContractGuard {
         IERC20(cash_new).safeApprove(curveDepositer, cash_new_amount);
         //args are: address, [cash, dai, usdc, usdt], min_mint_amount
         ICurveMeta(curveDepositer).add_liquidity(curvePool, [cash_new_amount, 0, 0, usdt_amount], 1);
+        return cash_old_amount;
     }
 
     //Converts V1 Cash/stable LP to V2 Cash/stable LP and transfers the V2 LP tokens back to the user
@@ -143,11 +145,13 @@ contract CashLpMigrator is ContractGuard {
         uint256 cashPrice = getOraclePrice();
         require(cashPrice <= 1000000, 'Cash v1 price must be <= $1');
 
-        _migrateCashLP();
+        uint256 convertedOldCashAmount = _migrateCashLP();
 
         //StakeLocked(_address, balance) stakes on behalf of _address
         //new staking contract should check the cash price before allowing people to stake locked
         //if that is the case, then I don't need to check the cash price in this contract
-        IStakingRewardsv2(stakingContract).stakeLockedFor(msg.sender, IERC20(lp_new).balanceOf(address(this)));
+        uint256 stakeAmount = IERC20(lp_new).balanceOf(address(this));
+        IERC20(lp_new).approve(stakingContract, stakeAmount);
+        IStakingRewardsv2(stakingContract).stakeLockedFor(msg.sender, stakeAmount, convertedOldCashAmount);
     }
 }
