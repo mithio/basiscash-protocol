@@ -7,6 +7,7 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import './utils/ContractGuard.sol';
 import './utils/Epoch.sol';
 import './ProRataRewardCheckpoint.sol';
+import './interfaces/IFeeDistributorRecipient.sol';
 
 contract ShareWrapper {
     using SafeMath for uint256;
@@ -43,7 +44,7 @@ contract ShareWrapper {
     }
 }
 
-contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpoint {
+contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpoint, IFeeDistributorRecipient{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -66,9 +67,6 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
     /* ========== STATE VARIABLES ========== */
 
     IERC20 private cash;
-    mapping(address => mapping(uint256 => uint256)) public claimableTaxesBucket; // claimableTaxesBucket[wallet][epoch] = amount
-    uint8 activeClaimableBucket = 0;	    
-    uint256 MINIMUM_EPOCH = 38;
 
     mapping(address => Boardseat) private directors;
     BoardSnapshot[] private boardHistory;
@@ -117,10 +115,6 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
         return calculateClaimable(directors[wallet].rewardEarned[epoch], epoch);
     }
     
-    function calculateClaimableTaxesForEpoch(address wallet, uint256 epoch) view public returns (uint256) {
-        return calculateClaimable(claimableTaxesBucket[wallet][epoch], epoch);
-    }
-
     function calculateClaimable(uint256 earned, uint256 epoch) view public returns (uint256) {
         uint256 epoch_delta = getCurrentEpoch() - epoch;
 
@@ -301,18 +295,6 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
         emit RewardAdded(msg.sender, amount);
     }
 
-    function claimTaxesForEpoch(uint256 epoch) public
-        onlyOneBlock
-    {
-        uint256 amount = calculateClaimableTaxesForEpoch(msg.sender, epoch);
-        claimableTaxesBucket[msg.sender][epoch]=0;
-        require(
-            IERC20(cash).balanceOf(address(this)) >= amount,
-            'Boardroom: Boardroom currently does not hold the amount of MIC needed'
-        );
-        IERC20(cash).safeTransfer(msg.sender, amount);
-    }
-
     /*
      * manualEpochInit can be used by anyone to initialize an epoch based on the previous one
      * This is only applicable if there was no action (deposit/withdraw) in the current epoch.
@@ -322,10 +304,32 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
         manualEpochInit(checkpointEpochId, getCheckpointEpoch());
     }
 
-    function addClaimableTaxes(uint256 amount) public {
-        uint256 current_epoch = getCurrentEpoch();
-        IERC20(cash).safeTransferFrom(msg.sender, address(this), amount);
-        claimableTaxesBucket[msg.sender][current_epoch] = claimableTaxesBucket[msg.sender][current_epoch].add(amount);
+    function allocateTaxes(uint256 amount)
+        external
+        onlyOneBlock
+        onlyFeeDistributor
+    {
+        require(amount > 0, 'Boardroom: Cannot allocate 0');
+        require(
+            totalSupply() > 0,
+            'Boardroom: Cannot allocate when totalSupply is 0'
+        );
+        // Create & add new snapshot
+        BoardSnapshot memory latestSnapshot = getLatestSnapshot();
+        uint256 prevRPS = latestSnapshot.rewardPerShare;
+        uint256 poolSize = getEpochPoolSize(getCheckpointEpoch());
+        uint256 nextRPS = prevRPS.add(amount.mul(1e18).div(poolSize));
+
+        BoardSnapshot memory newSnapshot = BoardSnapshot({
+            time: block.number,
+            rewardReceived: amount,
+            rewardPerShare: nextRPS
+        });
+        boardHistory.push(newSnapshot);
+
+        cash.safeTransferFrom(msg.sender, address(this), amount);
+        emit RewardAdded(msg.sender, amount);
+
     }
 
     function earnedNew(address director) private view returns (uint256) {
