@@ -49,7 +49,7 @@ contract FeeDistributor is IFeeDistributor, Operator {
         if(boardroomAddressAmount > 0) {
             token.safeApprove(boardroomAddress, 0);
             token.safeApprove(boardroomAddress, boardroomAddressAmount);
-            IBoardroomv2(boardroomAddress).addClaimableTaxes(boardroomAddressAmount);
+            IBoardroomv2(boardroomAddress).allocateTaxes(boardroomAddressAmount);
         }
         if(secondTransferAddressAmount > 0) {
             _safeTransfer(secondTransferAddress, secondTransferAddressAmount);
