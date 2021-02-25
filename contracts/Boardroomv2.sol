@@ -192,9 +192,6 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
         require(amount > 0, 'Boardroom: Cannot stake 0');
         uint256 previousBalance = balanceOf(msg.sender);
         super.stake(amount);
-        if (directors[msg.sender].startEpoch != 0) {
-            directors[msg.sender].startEpoch = getCurrentEpoch();
-        }
         depositCheckpoint(msg.sender, amount, previousBalance, getCheckpointEpoch());
 
         emit Staked(msg.sender, amount);
@@ -225,7 +222,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
         updateReward(msg.sender) 
     {
         require(amount > 0, 'Amount cannot be zero');
-
+        uint256 totalClaimAmount = amount;
         uint256 totalEarned = earned(msg.sender);
         require(amount <= totalEarned, 'Amount cannot be larger than total claimable rewards');
 
@@ -249,7 +246,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
             directors[msg.sender].startEpoch = 0;
         }
 
-        emit RewardPaid(msg.sender, amount);
+        emit RewardPaid(msg.sender, totalClaimAmount);
     }
 
     // Claim rewards for specific epoch
