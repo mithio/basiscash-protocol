@@ -146,7 +146,7 @@ contract Treasury is ContractGuard, Epoch {
 
     function _getCashPrice(address oracle) internal view returns (uint256) {
         try IOracle(oracle).consult(cash, 1e18) returns (uint256 price) {
-            return price.mul(1e12); // for USDT decimal
+            return price
         } catch {
             revert('Treasury: failed to consult cash price from the oracle');
         }
