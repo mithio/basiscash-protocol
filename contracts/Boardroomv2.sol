@@ -74,7 +74,7 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
     /* ========== CONSTRUCTOR ========== */
 
     constructor(IERC20 _cash, IERC20 _share, uint256 _startTime) 
-        public Epoch(6 hours, _startTime, 0)
+        public Epoch(24 hours, _startTime, 0)
         ProRataRewardCheckpoint(6 hours, _startTime, address(_share))
     {
         cash = _cash;
@@ -128,9 +128,10 @@ contract Boardroomv2 is ShareWrapper, ContractGuard, Epoch, ProRataRewardCheckpo
 
     // staking before start time regards as staking at epoch 0.  
     function getCheckpointEpoch() view public returns(uint128) {
-        uint256 currentEpoch = getCurrentEpoch();
-        return uint128(currentEpoch) + 1;
-
+        if (block.timestamp < epoch1Start) {
+            return 0;
+        }
+        return uint128((block.timestamp - epoch1Start) / epochDuration + 1);
     }
 
     // =========== Snapshot getters

@@ -4,8 +4,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // This is forked and modified from https://github.com/BarnBridge/BarnBridge-YieldFarming/blob/master/contracts/Staking.sol
 contract ProRataRewardCheckpoint {
     using SafeMath for uint256;
-    uint256 private epochDuration;
-    uint256 private epoch1Start;
+    uint256 internal epochDuration;
+    uint256 internal epoch1Start;
     uint128 constant private BASE_MULTIPLIER = uint128(1 * 10 ** 18);
     address private stakeToken;
 
