@@ -71,7 +71,7 @@ contract DAIMISLPTokenSharePool is
     Operator
 {
     IERC20 public mithShare;
-    uint256 public DURATION = 365 days;
+    uint256 public DURATION = 310 days; // 10 months
 
     uint256 public starttime;
     uint256 public periodFinish = 0;
