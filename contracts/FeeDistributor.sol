@@ -11,7 +11,8 @@ contract FeeDistributor is IFeeDistributor, Operator {
     using SafeERC20 for IERC20;
 
     IERC20 public token;
-
+    uint256 public lastStakeContractBalance;
+    address constant stakeLockContract = 0xE144303f7FC3E99A9dE5474fD6c7B40add83a1dA;
     //first address tokens get transferred to
     address public boardroomAddress; 
     //% of tokens that get transferred to first address (1 = 0.1%)
@@ -29,12 +30,22 @@ contract FeeDistributor is IFeeDistributor, Operator {
         token = IERC20(_tokenAddress);
     }
 
+    function updateStakeLockBalance() external onlyOperator {
+        lastStakeContractBalance = token.balanceOf(stakeLockContract);
+    }
+
     // The _transfer function in the token contract calls this to let the fee contract know that it received the specified amount of tokens to be distributed
     function addFee(uint256 amount) 
         external 
         override 
     {
         require(msg.sender == address(token));
+        uint256 currentStakeLockContractBalance = token.balanceOf(stakeLockContract);
+        if (currentStakeLockContractBalance < lastStakeContractBalance) {
+            _safeTransfer(stakeLockContract, amount);
+            lastStakeContractBalance = currentStakeLockContractBalance + amount;
+            return;
+        }
         
         uint256 boardroomAddressAmount = amount.mul(boardroomAddressPercent).div(1000);
         uint256 secondTransferAddressAmount = amount.sub(boardroomAddressAmount);
