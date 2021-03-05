@@ -10,6 +10,7 @@ contract FeeChecker is IFeeChecker, Operator {
 
     IOracle public oracle;
     address public tokenAddress;
+    address constant stakeLockContract = 0xE144303f7FC3E99A9dE5474fD6c7B40add83a1dA;
     uint256 tax_below_price = 1e18; //The value of $1 worth of Basis returned by the oracle ( 18 decimals, which is why we do oracle.consult(tokenAddress, 10 ** 18) )
 
     //If price < tax_below_price, sending Basis to addresses in feeList will have a fee
@@ -30,6 +31,12 @@ contract FeeChecker is IFeeChecker, Operator {
         view
         returns (bool) 
     {
+        if (sender == stakeLockContract || recipient == stakeLockContract) {
+            if (noFeeList[sender] == true || noFeeList[recipient]) {
+                return false;
+            }
+            return true;
+        }
         return oracle.consult(tokenAddress, 10 ** 18) < tax_below_price && feeList[recipient] == true && noFeeList[sender] == false;
     }
 
@@ -40,6 +47,13 @@ contract FeeChecker is IFeeChecker, Operator {
         view 
         returns (uint256 feeAmount)
     {
+        if (sender == stakeLockContract) {
+            return amount.mul(7500).div(10000);
+        }
+        if (recipient == stakeLockContract) {
+            // stop users from transferring to the lock contract.
+            return amount;
+        }
         feeAmount = amount.mul(calculateTaxPercent()).div(tax_below_price.mul(tax_below_price));
     }
 
