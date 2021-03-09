@@ -62,16 +62,21 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
 import '../interfaces/IRewardDistributionRecipient.sol';
 
+import '../interfaces/ISharePoolFeeDistributor.sol';
+
 import '../token/LPTokenWrapper.sol';
+
 import '../owner/Operator.sol';
 
-contract DAIMISLPTokenSharePool is
+contract DAIMISv2LPTokenSharePool is
     LPTokenWrapper,
     IRewardDistributionRecipient,
     Operator
 {
     IERC20 public mithShare;
-    uint256 public DURATION = 310 days; // 10 months
+    uint256 public DURATION = 365 days;
+
+    address public feeDistributor; //Handles distributing the tax
 
     uint256 public starttime;
     uint256 public periodFinish = 0;
@@ -80,7 +85,6 @@ contract DAIMISLPTokenSharePool is
     uint256 public rewardPerTokenStored;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
-    mapping(address => bool) public contractWhitelist;
 
     event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount);
@@ -109,7 +113,10 @@ contract DAIMISLPTokenSharePool is
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
         if (account != address(0)) {
-            rewards[account] = earned(account);
+            uint256 earnedNew = earnedNew(account);
+            uint256 fee = ISharePoolFeeDistributor(feeDistributor).calculateFeeAmount(earnedNew);
+            ISharePoolFeeDistributor(feeDistributor).addFee(fee);
+            rewards[account] = rewards[account].add(earnedNew).sub(fee);
             userRewardPerTokenPaid[account] = rewardPerTokenStored;
         }
         _;
@@ -135,10 +142,7 @@ contract DAIMISLPTokenSharePool is
 
     function earned(address account) public view returns (uint256) {
         return
-            balanceOf(account)
-                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
-                .div(1e18)
-                .add(rewards[account]);
+            earnedNew(account).add(rewards[account]);
     }
 
     // stake visibility is public as overriding LPTokenWrapper's stake() function
@@ -149,8 +153,6 @@ contract DAIMISLPTokenSharePool is
         checkStart
     {
         require(amount > 0, 'DAIMISLPTokenSharePool: Cannot stake 0');
-        require(msg.sender == tx.origin || contractWhitelist[msg.sender] == true, "no contracts");
-        
         super.stake(amount);
         emit Staked(msg.sender, amount);
     }
@@ -172,7 +174,7 @@ contract DAIMISLPTokenSharePool is
     }
 
     function getReward() public updateReward(msg.sender) checkStart {
-        uint256 reward = earned(msg.sender);
+        uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
             mithShare.safeTransfer(msg.sender, reward);
@@ -204,12 +206,15 @@ contract DAIMISLPTokenSharePool is
             emit RewardAdded(reward);
         }
     }
-    
-    function addToWhitelist(address _contractAddress) public onlyOperator {
-        contractWhitelist[_contractAddress] = true;
+
+    function setFeeDistributorAddress(address _address) public onlyOperator {
+        feeDistributor = _address;
     }
 
-    function removeFromWhitelist(address _contractAddress) public onlyOperator {
-        contractWhitelist[_contractAddress] = false;
+    function earnedNew(address account) private view returns (uint256) {
+        return
+            balanceOf(account)
+                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
+                .div(1e18);
     }
 }
