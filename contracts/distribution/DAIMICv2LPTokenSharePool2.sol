@@ -234,6 +234,6 @@ contract DAIMICv2LPTokenSharePool2 is
     function migrateShares(address _address) public onlyOperator {
         uint256 _bal = mithShare.balanceOf(address(this));
         mithShare.safeTransfer(_address, _bal);
-        emit Migration(target, _bal);
+        emit Migration(_address, _bal);
     }
 }
