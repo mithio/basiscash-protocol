@@ -188,9 +188,10 @@ contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRe
         claimReward();
     }
 
-    function claimPendingReward() public {
+    //Claim rewards after the 5 day delay
+    function claimReward() public {
         uint256 timeCanWithdraw = directors[msg.sender].pendingWithdrawalTime;
-        require(timeCanWithdraw <= now, 'Boardroom: Cannot claim pending reward yet');
+        require(timeCanWithdraw <= now, 'Boardroom: Need to wait more time before claiming reward');
 
         uint256 reward = directors[msg.sender].pendingWithdrawalBalance;
 
@@ -203,7 +204,9 @@ contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRe
         }
     }
 
-    function claimReward() public updateReward(msg.sender) {
+    //Initiates a reward claim with a 5 day delay
+    //This will reset the timer for any "mature" rewards the user has 
+    function initiateRewardClaim() public updateReward(msg.sender) {
         uint256 reward = directors[msg.sender].rewardEarned;
         if (reward > 0) {
             uint256 newPendingWithdrawalBalance = directors[msg.sender].pendingWithdrawalBalance.add(reward);
