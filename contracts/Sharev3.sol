@@ -3,7 +3,7 @@ pragma solidity ^0.6.0;
 import './owner/Operator.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol';
 
-contract Sharev2 is ERC20Burnable, Operator {
+contract Sharev3 is ERC20Burnable, Operator {
 
     uint256 public constant MAX_SUPPLY = 500000 * 10**18;
 
