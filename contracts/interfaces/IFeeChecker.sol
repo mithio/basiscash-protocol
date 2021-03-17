@@ -4,5 +4,7 @@ interface IFeeChecker {
 
     function isTransferTaxed(address sender, address recipient) external view returns (bool);
 
+    function isTransferTaxed2() external view returns (bool);
+
     function calculateFeeAmount(address sender, address recipient, uint256 amount) external view returns (uint256 feeAmount);
 }
