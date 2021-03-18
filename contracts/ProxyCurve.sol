@@ -2,6 +2,7 @@ pragma solidity ^0.6.2;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import '@openzeppelin/contracts/math/SafeMath.sol';
 import "./interfaces/ICurveMeta2.sol";
 import './owner/Operator.sol';
 import './Cashv2.sol';
@@ -10,6 +11,7 @@ import './interfaces/IFeeDistributor.sol';
 
 contract ProxyCurve is Operator {
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     address public pool; //Address of the Curve metapool
     address public cash; //Address of the Curve metapool
@@ -35,8 +37,8 @@ contract ProxyCurve is Operator {
 
         if(IFeeChecker(feeChecker).isTransferTaxed2()) {
             //Calculate tax
-            uint256 feeAmount = IFeeChecker(feeChecker).calculateFeeAmount(sender, recipient, amount);
-            uint256 transferToAmount = amount.sub(feeAmount);
+            uint256 feeAmount = IFeeChecker(feeChecker).calculateFeeAmount(address(this), pool, dx);
+            uint256 transferToAmount = dx.sub(feeAmount);
 
             //Send to fee distributor
             IERC20(cash).safeTransfer(feeDistributor, feeAmount);
@@ -52,7 +54,7 @@ contract ProxyCurve is Operator {
             //Transaction isn't taxed, so just do a normal swap
             //To save gas, the website should use the metapool contract when transactions aren't taxed
             IERC20(cash).safeApprove(pool, 0);
-            IERC20(cash).safeApprove(pool, transferToAmount);
+            IERC20(cash).safeApprove(pool, dx);
             ICurveMeta2(pool).exchange_underlying(0, j, dx, min_dy, msg.sender);
         }
     }
