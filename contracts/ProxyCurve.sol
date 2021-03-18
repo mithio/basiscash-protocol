@@ -29,9 +29,8 @@ contract ProxyCurve is Operator {
     /// @param j Index value of the underlying coin to recieve
     /// @param dx Amount of MIC being exchanged
     /// @param min_dy Minimum amount of `j` to receive, should be calculated on the website based on `transferToAmount` (the amount remaining after the tax)
-    /// @param _receiver Address that receives `j`
     /// @return Actual amount of `j` received
-    function exchangeMIC(uint128 j, uint256 dx, uint256 min_dy, address _receiver) external returns (uint256) {
+    function exchangeMIC(uint128 j, uint256 dx, uint256 min_dy) external returns (uint256) {
         //Transfer tokens from the caller
         IERC20(cash).safeTransferFrom(msg.sender, address(this), dx);
 
@@ -47,7 +46,9 @@ contract ProxyCurve is Operator {
             //Approve Curve metapool and exchange the amount remaining after the tax
             IERC20(cash).safeApprove(pool, 0);
             IERC20(cash).safeApprove(pool, transferToAmount);
+
             //For metapools: 0 = the token (i.e. Frax, MIC, etc), 1 = DAI, 2 = USDC, 3 = USDT
+            //_receiver = msg.sender, so tokens are sent to the user 
             ICurveMeta2(pool).exchange_underlying(0, j, transferToAmount, min_dy, msg.sender);
         }
         else {
