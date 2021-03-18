@@ -8,7 +8,7 @@ interface ICurveMeta2 {
     /// @param j Index value of the coin to recieve
     /// @param dx Amount of `i` being exchanged
     /// @return Amount of `j` predicted
-    function get_dy_underlying(uint128 i, uint128 j, uint256 dx) external returns (uint256);
+    function get_dy_underlying(int128 i, int128 j, uint256 dx) external view returns (uint256);
 
     /// @notice Perform an exchange between two underlying coins
     /// @dev Index values can be found via the `underlying_coins` public getter method
@@ -18,5 +18,5 @@ interface ICurveMeta2 {
     /// @param min_dy Minimum amount of `j` to receive
     /// @param _receiver Address that receives `j`
     /// @return Actual amount of `j` received
-    function exchange_underlying(uint128 i, uint128 j, uint256 dx, uint256 min_dy, address _receiver) external returns (uint256);
+    function exchange_underlying(int128 i, int128 j, uint256 dx, uint256 min_dy, address _receiver) external returns (uint256);
 }
