@@ -11,15 +11,19 @@ contract ShareExchange is ContractGuard {
     address public share_old;
     address public share_new;
 
-    constructor(address _share_old, address _share_new) public {
+    uint256 public endTime;
+
+    constructor(address _share_old, address _share_new, uint256 _endTime) public {
         share_old = _share_old;
         share_new = _share_new;
+        endTime = _endTime;
     }
 
     function exchangeShares(uint256 amount)
         external
         onlyOneBlock
     {
+        require(block.timestamp <= endTime, 'ShareExchange: redemption period ended');
         require(amount > 0, 'ShareExchange: amount must be > 0');
 
         //reverts if amount > sender's balance, so I don't need to check if amount <= sender's balance
