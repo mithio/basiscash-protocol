@@ -78,7 +78,7 @@ contract DAIMICv2LPTokenSharePool2 is
 
     address public feeDistributor; //Handles distributing the tax
 
-    uint256 public initreward = 150000 * 10**18; // 150,000 Shares
+    uint256 public initreward = 2980333 * 10**16; // 29,803.33 Shares
     uint256 public starttime; // starttime TBD
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
