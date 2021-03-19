@@ -1,5 +1,6 @@
 pragma solidity >=0.6.0;
 
+//This is the interface for the Curve Metapool itself
 interface ICurveMeta2 {
 
     /// @notice Calculate the current output dy given input dx on underlying
