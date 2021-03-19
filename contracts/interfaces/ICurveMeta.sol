@@ -1,5 +1,6 @@
 pragma solidity >=0.6.0;
 
+//This is the interface for the Curve "Zap" Depositer for permissionless USD metapools
 interface ICurveMeta {
     //For metapools: 0 = the token (i.e. Frax, MIC, etc), 1 = DAI, 2 = USDC, 3 = USDT
     function add_liquidity(address _pool, uint256[4] calldata _deposit_amounts, uint256 _min_mint_amount) external returns (uint256);
