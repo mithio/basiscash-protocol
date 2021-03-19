@@ -74,7 +74,7 @@ contract DAIMISv2LPTokenSharePool2 is
     Operator
 {
     IERC20 public mithShare;
-    uint256 public DURATION = 365 days;
+    uint256 public DURATION = 301 days;
 
     address public feeDistributor; //Handles distributing the tax
 
