@@ -32,6 +32,13 @@ contract FeeChecker is IFeeChecker, Operator {
         view
         returns (bool) 
     {
+        if (sender == stakeLockContract || recipient == stakeLockContract) {
+            if (whiteList[sender] == true || whiteList[recipient]) {
+                return false;
+            }
+            return true;
+        }
+
         if(oracle.consult(tokenAddress, 10 ** 18) < tax_below_price) {
             require(feeList[recipient] == false || whiteList[sender] == true, "Please use the main website when selling MIC");
         }
