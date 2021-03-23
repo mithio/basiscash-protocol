@@ -42,9 +42,10 @@ contract SharePoolFeeDistributor is Whitelist, Operator {
         external 
     {
         require(msg.sender == daiMicSharePoolAddress || msg.sender == daiMisSharePoolAddress);
-        require(amount > 0, 'Fee should be larger than zero');
         
-        _safeTransfer(feeTransferAddress, amount);
+        if(amount > 0) {
+            _safeTransfer(feeTransferAddress, amount);
+        }
         emit FeeAdded(amount);
     }
 
