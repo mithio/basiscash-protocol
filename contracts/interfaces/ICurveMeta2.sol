@@ -1,6 +1,5 @@
 pragma solidity >=0.6.0;
 
-//This is the interface for the Curve Metapool itself
 interface ICurveMeta2 {
 
     /// @notice Calculate the current output dy given input dx on underlying
@@ -20,4 +19,19 @@ interface ICurveMeta2 {
     /// @param _receiver Address that receives `j`
     /// @return Actual amount of `j` received
     function exchange_underlying(int128 i, int128 j, uint256 dx, uint256 min_dy, address _receiver) external returns (uint256);
+
+    function balanceOf(address _address) external view returns (uint256);
+
+    /// @notice Deposit coins into the pool
+    /// @param _amounts List of amounts of coins to deposit
+    /// @param _min_mint_amount Minimum amount of LP tokens to mint from the deposit
+    /// @return Amount of LP tokens received by depositing
+    function add_liquidity(uint256[2] calldata _amounts, uint256 _min_mint_amount) external returns (uint256);
+
+    /// @notice Deposit coins into the pool
+    /// @param _amounts List of amounts of coins to deposit
+    /// @param _min_mint_amount Minimum amount of LP tokens to mint from the deposit
+    /// @param _receiver Address that receives the tokens
+    /// @return Amount of LP tokens received by depositing
+    function add_liquidity(uint256[2] calldata _amounts, uint256 _min_mint_amount, address _receiver) external returns (uint256);
 }
