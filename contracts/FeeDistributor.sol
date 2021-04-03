@@ -23,6 +23,8 @@ contract FeeDistributor is IFeeDistributor, Operator {
     address public fundAddress;
     //setting this to an address no one has the private keys to like 0x0000000000000000000000000000000000000001 basically burns the tokens
     address public secondTransferAddress; 
+    //Addresses that are allowed to add fees
+    mapping(address => bool) public feeAdderList;
 
     event FeeAdded(uint256 amount);
 
@@ -39,7 +41,7 @@ contract FeeDistributor is IFeeDistributor, Operator {
         external 
         override 
     {
-        require(msg.sender == address(token));
+        require(feeAdderList[msg.sender], "Sender not allowed to add fees");
         uint256 currentStakeLockContractBalance = token.balanceOf(stakeLockContract);
         if (currentStakeLockContractBalance < lastStakeContractBalance) {
             _safeTransfer(stakeLockContract, amount);
@@ -102,5 +104,9 @@ contract FeeDistributor is IFeeDistributor, Operator {
 
     function setSecondTransferAddress(address _address) public onlyOperator {
         secondTransferAddress = _address;
+    }
+
+    function addToFeeAdderList(address _address) public onlyOperator {
+        feeAdderList[_address] = true;
     }
 }
