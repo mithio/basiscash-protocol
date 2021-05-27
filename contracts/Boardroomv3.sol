@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
 import './lib/Safe112.sol';
+import './lib/prb-math/PRBMathUD60x18.sol';
 import './owner/Operator.sol';
 import './utils/ContractGuard.sol';
 import './interfaces/IBasisAsset.sol';
@@ -57,7 +58,7 @@ contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRe
         uint256 lastSnapshotIndex;
         uint256 rewardEarned;
         uint256 pendingWithdrawalBalance;
-        uint256 pendingWithdrawalTime;
+        uint256 startTime;
     }
 
     struct BoardSnapshot {
@@ -141,21 +142,17 @@ contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRe
     }
 
     function earned(address director) public view returns (uint256) {
-        uint256 latestRPS = getLatestSnapshot().rewardPerShare;
-        uint256 storedRPS = getLastSnapshotOf(director).rewardPerShare;
+        uint256 stakingPeriod = (now - directors[director].startTime) / 1 days;
 
-        return
-            balanceOf(director).mul(latestRPS.sub(storedRPS)).div(1e18).add(
-                directors[director].rewardEarned
-            );
+        return balanceOf(director).mul(PRBMathUD60x18.log10(stakingPeriod + 1)).div(1e18).add(directors[director].rewardEarned);
     }
 
     function pendingWithdrawalBalance(address director) public view returns (uint256) {
         return directors[director].pendingWithdrawalBalance;
     }
 
-    function pendingWithdrawalTime(address director) public view returns (uint256) {
-        return directors[director].pendingWithdrawalTime;
+    function startTime(address director) public view returns (uint256) {
+        return directors[director].startTime;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -190,14 +187,10 @@ contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRe
 
     //Claim rewards after the 5 day delay
     function claimReward() public {
-        uint256 timeCanWithdraw = directors[msg.sender].pendingWithdrawalTime;
-        require(timeCanWithdraw <= now, 'Boardroom: Need to wait more time before claiming reward');
-
         uint256 reward = directors[msg.sender].pendingWithdrawalBalance;
 
         if (reward > 0) {
             directors[msg.sender].pendingWithdrawalBalance = 0;
-            directors[msg.sender].pendingWithdrawalTime = 0;
 
             cash.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
@@ -205,14 +198,14 @@ contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRe
     }
 
     //Initiates a reward claim with a 5 day delay
-    //This will reset the timer for any "mature" rewards the user has 
+    //This will reset the timer for any "mature" rewards the user has
     function initiateRewardClaim() public updateReward(msg.sender) {
         uint256 reward = directors[msg.sender].rewardEarned;
         if (reward > 0) {
             uint256 newPendingWithdrawalBalance = directors[msg.sender].pendingWithdrawalBalance.add(reward);
             directors[msg.sender].rewardEarned = 0;
             directors[msg.sender].pendingWithdrawalBalance = newPendingWithdrawalBalance;
-            directors[msg.sender].pendingWithdrawalTime = now + 5 days;
+            directors[msg.sender].startTime = now;
             emit RewardPending(msg.sender, reward);
         }
     }
