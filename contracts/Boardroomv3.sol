@@ -27,23 +27,6 @@ contract ShareWrapper {
     function balanceOf(address account) public view returns (uint256) {
         return _balances[account];
     }
-
-    function stake(uint256 amount) public virtual {
-        _totalSupply = _totalSupply.add(amount);
-        _balances[msg.sender] = _balances[msg.sender].add(amount);
-        share.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
-    function withdraw(uint256 amount) public virtual {
-        uint256 directorShare = _balances[msg.sender];
-        require(
-            directorShare >= amount,
-            'Boardroom: withdraw request greater than staked amount'
-        );
-        _totalSupply = _totalSupply.sub(amount);
-        _balances[msg.sender] = directorShare.sub(amount);
-        share.safeTransfer(msg.sender, amount);
-    }
 }
 
 contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRecipient {
@@ -156,60 +139,6 @@ contract Boardroomv3 is ShareWrapper, ContractGuard, Operator, IFeeDistributorRe
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
-
-    function stake(uint256 amount)
-        public
-        override
-        onlyOneBlock
-        updateReward(msg.sender)
-    {
-        require(amount > 0, 'Boardroom: Cannot stake 0');
-        super.stake(amount);
-        emit Staked(msg.sender, amount);
-    }
-
-    function withdraw(uint256 amount)
-        public
-        override
-        onlyOneBlock
-        directorExists
-        updateReward(msg.sender)
-    {
-        require(amount > 0, 'Boardroom: Cannot withdraw 0');
-        super.withdraw(amount);
-        emit Withdrawn(msg.sender, amount);
-    }
-
-    function exit() external {
-        withdraw(balanceOf(msg.sender));
-        claimReward();
-    }
-
-    //Claim rewards after the 5 day delay
-    function claimReward() public {
-        uint256 reward = directors[msg.sender].pendingWithdrawalBalance;
-
-        if (reward > 0) {
-            directors[msg.sender].pendingWithdrawalBalance = 0;
-
-            cash.safeTransfer(msg.sender, reward);
-            emit RewardPaid(msg.sender, reward);
-        }
-    }
-
-    //Initiates a reward claim with a 5 day delay
-    //This will reset the timer for any "mature" rewards the user has
-    function initiateRewardClaim() public updateReward(msg.sender) {
-        uint256 reward = directors[msg.sender].rewardEarned;
-        if (reward > 0) {
-            uint256 newPendingWithdrawalBalance = directors[msg.sender].pendingWithdrawalBalance.add(reward);
-            directors[msg.sender].rewardEarned = 0;
-            directors[msg.sender].pendingWithdrawalBalance = newPendingWithdrawalBalance;
-            directors[msg.sender].startTime = now;
-            emit RewardPending(msg.sender, reward);
-        }
-    }
-
     function allocateSeigniorage(uint256 amount)
         external
         onlyOneBlock
